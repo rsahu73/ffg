@@ -1,0 +1,9 @@
+
+.bp-required-field-label {
+    color: red;
+}
+
+input[type="text"]
+{
+    width:100px;
+}
