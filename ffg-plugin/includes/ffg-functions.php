@@ -28,6 +28,23 @@ function ffg_save_user_persona() {
                 }
                 $persona_calculated_array = array('P'=>0, 'E'=>0, 'C'=>0);
                 $weight_per_option_meta_value = bp_xprofile_get_meta( $field->id, 'field', 'ffg-persona-weight-per-option' );
+
+                $fetched_meta_value = bp_xprofile_get_meta( $field->id, 'field', 'ffg-persona-mapping-meta' );
+                if (is_array($fetched_meta_value)){
+                    $saved_meta_value = $fetched_meta_value;
+                }
+                else {
+                    $saved_meta_value = unserialize($fetched_meta_value);
+                }
+                $total_meta_count = 0;
+                foreach($saved_meta_value as $key=>$value){
+                    if (ffg_validate_meta_data($value)){
+                        $total_meta_count++;
+                    }
+                }
+                echo "Meta count provided : ".$total_meta_count;
+                $weight_per_option_meta_value = number_format($weight_per_option_meta_value/$total_meta_count,2);
+
                 foreach($field_data_array as $field_data) {
 
                     // Old Logic
@@ -46,8 +63,6 @@ function ffg_save_user_persona() {
                     // }
 
                     // New Logic
-                    $saved_meta_value = unserialize(bp_xprofile_get_meta( $field->id, 'field', 'ffg-persona-mapping-meta' ));
-                    
                     $persona_map_value = explode("/",$saved_meta_value[$field_data]);
                     $per_option_weight = number_format($weight_per_option_meta_value / count($persona_map_value),2);
                     if (in_array('P', $persona_map_value)) {
@@ -115,7 +130,8 @@ function ffg_get_user_persona(array $p_persona_calculated_array) {
 }
 
 function ffg_calculate_user_persona($p_field_data, $p_field_id, &$p_persona_calculated_array) {
-    $saved_meta_value = unserialize(bp_xprofile_get_meta( $p_field_id, 'field', 'ffg-persona-mapping-meta' ));
+    $meta_value = bp_xprofile_get_meta( $p_field_id, 'field', 'ffg-persona-mapping-meta' );
+    $saved_meta_value = unserialize($meta_value);
     $persona_map_value = explode("/",$saved_meta_value[$p_field_data]);
 
     if (in_array('P', $persona_map_value)) {
@@ -159,6 +175,10 @@ function ffg_get_field_options($field_id) {
     and parent_id = ".$field_id.";");
 }
 
+function ffg_validate_meta_data($meta_data) {
+    return preg_match("/[PpeECc\/]{1,5}/i", $meta_data);
+}
+
 function ffg_setting_page_content() {
     global $wpdb;
     
@@ -177,7 +197,7 @@ function ffg_setting_page_content() {
                     if (!empty($options)) {
                         foreach($options as $childRow) {
                             //$tempData = $tempData.$childRow->id."#".$_POST[$childRow->id];
-                            $fieldMeta[$childRow->name]=$_POST[$childRow->id];
+                                $fieldMeta[$childRow->name]=$_POST[$childRow->id];
                         }                        
                     }
                     bp_xprofile_update_field_meta( $row->id, 'ffg-persona-mapping-meta', serialize($fieldMeta) );
