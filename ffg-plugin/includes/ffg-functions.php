@@ -3,6 +3,84 @@
 add_action('admin_menu', 'ffg_admin_page_menu');
 add_action('xprofile_updated_profile', 'ffg_save_user_persona');
 add_filter('bp_get_the_profile_field_required_label', 'ffg_change_required_label', 10, 2);
+add_filter('bp_after_has_profile_parse_args', 'hide_persona_fields');
+//add_action( 'wp_login', 'ffg_on_login_check' , 0 );
+//add_action('xprofile_updated_profile','ffg_check_for_required_fields' );
+
+
+// function ffg_on_login_check($user_login) {
+//     $user = get_user_by( 'login', $user_login );
+//     if ( ! $user ) {
+//         return;
+//     }
+//     $redirect_url = bp_core_get_user_domain( $user->ID ) . bp_get_profile_slug().'/edit/';
+//     bp_core_add_message(__( 'Your Profile is Incomplete. Please complete your profilr', 'ffg' ), 'error' );
+//     $is_complete = ffg_check_for_profile_complete($user->ID);
+//     if (!$is_complete) {
+//         bp_core_redirect($redirect_url);
+//         bp_core_add_message('Your Profile is Incomplete. Please complete your profilr', 'error' );
+//     }
+    
+// }
+
+// function ffg_check_for_profile_complete($user_id) {
+//     global $wpdb;
+//     $complete = true;
+//     $field_table = buddypress()->profile->table_name_fields;
+
+//     $field_query = $wpdb->prepare( "SELECT * FROM {$field_table} WHERE is_required = %d", 1 );
+//     $required_fields_result = $wpdb->get_results( $field_query );
+//     $required_field_array = array();
+//     foreach($required_fields_result as $field) {
+//         array_push($required_field_array, $field->id);
+//     }
+//     update_option('ffg_required_fields', implode(',',$required_field_array));
+//     $required_fields = implode(',',$required_field_array);
+
+//     $data_table = buddypress()->profile->table_name_data;
+//     $data_query = $wpdb->prepare( "SELECT *  FROM {$data_table} WHERE user_id = %d AND field_id IN ( {$required_fields} ) GROUP BY field_id", $user_id );
+
+
+//     $profile_data = $wpdb->get_results($data_query);
+//     $profile_data_arr = array();
+//     foreach($profile_data as $data_field) {
+//         array_push($profile_data_arr, $data_field->field_id);
+//     }
+
+//     $empty_required_field = array();
+//     if (count($profile_data) != count($required_field_array)) {
+//         $complete = false;
+//         foreach ($required_field_array as $field_arr) {
+//             if (!in_array($field_arr, $profile_data_arr, true))  {
+//                 array_push($empty_required_field, $field_arr);
+//             }
+//         }
+//     }
+//     else {
+//         foreach ($profile_data as $data) {
+//             $value = maybe_unserialize( $data->value );
+//             if (empty($value)) {
+//                 $complete = false;
+//             }
+//         }
+//     }
+//     update_user_meta($user_id, 'ffg_incomplete_fields', ($complete ? 'True : ' : 'False : ') . implode(',',$empty_required_field));
+//     return $complete;
+
+// }
+
+function hide_persona_fields($retval) {
+    if(  bp_is_user_profile_edit() ) {  
+        $persona_field_id = xprofile_get_field_id_from_name('Persona');
+        $persona_overview_field_id = xprofile_get_field_id_from_name('Persona Overview');
+
+        $retval['exclude_fields'] = $persona_field_id.','.$persona_overview_field_id;
+    }
+    else {
+        $retval['exclude_fields'] = '';
+    }
+    return $retval;
+}
 
 function ffg_change_required_label() {
     return "*";
@@ -86,6 +164,7 @@ function ffg_save_user_persona() {
         bp_update_user_meta( $user_id, 'ffg-user-persona-entrepreneur-value', $persona_calculated_value['E'] );
         bp_update_user_meta( $user_id, 'ffg-user-persona-citizen-value', $persona_calculated_value['C'] );
         bp_update_user_meta( $user_id, 'ffg-user-persona', ffg_get_user_persona($persona_calculated_value) );
+        ffg_set_persona_fields($user_id, $persona_calculated_value);
     }
 
 }
@@ -102,6 +181,16 @@ function ffg_calculate_user_persona_value(array $p_persona_calculated_array, arr
 
     return $persona_calculated_value;
 
+}
+
+function ffg_set_persona_fields($user_id, array $persona_calculated_value) {
+    xprofile_set_field_data('Persona', $user_id, ffg_get_user_persona($persona_calculated_value));
+    $total = $persona_calculated_value['P'] + $persona_calculated_value['E'] + $persona_calculated_value['C'];
+    $partner_per = number_format(($persona_calculated_value['P']/$total)*100, 1);
+    $entrepreneur_per = number_format(($persona_calculated_value['E']/$total)*100, 1);
+    $citizen_per = number_format(($persona_calculated_value['C']/$total)*100, 1);
+    $persona_overview = "Partner : " . $partner_per . " % | Entrepreneur : " . $entrepreneur_per . " % | Citizen : " . $citizen_per . " %";
+    xprofile_set_field_data('Persona Overview', $user_id, $persona_overview);
 }
 
 function ffg_get_user_persona(array $p_persona_calculated_array) {
