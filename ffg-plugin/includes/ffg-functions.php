@@ -3,6 +3,7 @@
 add_action('admin_menu', 'ffg_admin_page_menu');
 add_action('xprofile_updated_profile', 'ffg_save_user_persona');
 add_filter('bp_get_the_profile_field_required_label', 'ffg_change_required_label', 10, 2);
+add_filter('bp_after_has_profile_parse_args', 'hide_persona_fields');
 
 function ffg_change_required_label() {
     return "*";
@@ -86,6 +87,7 @@ function ffg_save_user_persona() {
         bp_update_user_meta( $user_id, 'ffg-user-persona-entrepreneur-value', $persona_calculated_value['E'] );
         bp_update_user_meta( $user_id, 'ffg-user-persona-citizen-value', $persona_calculated_value['C'] );
         bp_update_user_meta( $user_id, 'ffg-user-persona', ffg_get_user_persona($persona_calculated_value) );
+		ffg_set_persona_fields($user_id, $persona_calculated_value);
     }
 
 }
@@ -177,6 +179,29 @@ function ffg_get_field_options($field_id) {
 
 function ffg_validate_meta_data($meta_data) {
     return preg_match("/[PpeECc\/]{1,5}/i", $meta_data);
+}
+
+function hide_persona_fields($retval) {
+    if(  bp_is_user_profile_edit() ) {  
+        $persona_field_id = xprofile_get_field_id_from_name('Persona');
+        $persona_overview_field_id = xprofile_get_field_id_from_name('Persona Overview');
+
+        $retval['exclude_fields'] = $persona_field_id.','.$persona_overview_field_id;
+    }
+    else {
+        $retval['exclude_fields'] = '';
+    }
+    return $retval;
+}
+
+function ffg_set_persona_fields($user_id, array $persona_calculated_value) {
+    xprofile_set_field_data('Persona', $user_id, ffg_get_user_persona($persona_calculated_value));
+    $total = $persona_calculated_value['P'] + $persona_calculated_value['E'] + $persona_calculated_value['C'];
+    $partner_per = number_format(($persona_calculated_value['P']/$total)*100, 1);
+    $entrepreneur_per = number_format(($persona_calculated_value['E']/$total)*100, 1);
+    $citizen_per = number_format(($persona_calculated_value['C']/$total)*100, 1);
+    $persona_overview = "Partner : " . $partner_per . " % | Entrepreneur : " . $entrepreneur_per . " % | Citizen : " . $citizen_per . " %";
+    xprofile_set_field_data('Persona Overview', $user_id, $persona_overview);
 }
 
 function ffg_setting_page_content() {
