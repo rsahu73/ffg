@@ -10,6 +10,8 @@ License URI:  https://www.gnu.org/licenses/gpl-2.0.html
 
 //Include CSS file
 add_action( 'wp_enqueue_scripts', 'load_ffg_css' );
+add_action( 'admin_enqueue_scripts', 'load_ffg_css' );
+
 
 // Include functions file
 require_once plugin_dir_path(__FILE__) . 'includes/ffg-functions.php';

@@ -4,23 +4,33 @@ add_action('admin_menu', 'ffg_admin_page_menu');
 add_action('xprofile_updated_profile', 'ffg_save_user_persona');
 add_filter('bp_get_the_profile_field_required_label', 'ffg_change_required_label', 10, 2);
 add_filter('bp_after_has_profile_parse_args', 'hide_persona_fields');
+add_action( 'wp_ajax_my_action', 'my_action' );
+
 
 function ffg_change_required_label() {
     return "*";
 }
 
-
 function ffg_save_user_persona() {
+    $user = bp_displayed_user_id();
+    echo "Start Processing " ." User Id : ". $user ."\n";
+    ffg_update_user_persona($user);
+    echo "End Processing " ." User Id : ". $user ."\n";
+}
+
+function ffg_update_user_persona($user_id) {
     $meta_key = 'ffg-user-persona-value';
-    $user_id = bp_displayed_user_id();
     
     $persona_calculated_value = array('P'=>0, 'E'=>0, 'C'=>0);
     $persona_fields = ffg_get_persona_fields();
+
 
     if (!empty($persona_fields)) {
         foreach($persona_fields as $field) {
             $field_data_values = xprofile_get_field_data($field->id, $user_id);
             if (!empty($field_data_values)) {
+
+
                 if (!is_array($field_data_values)) {
                     $field_data_array = array($field_data_values);
                 }
@@ -43,27 +53,11 @@ function ffg_save_user_persona() {
                         $total_meta_count++;
                     }
                 }
-                echo "Meta count provided : ".$total_meta_count;
+
                 $weight_per_option_meta_value = number_format($weight_per_option_meta_value/$total_meta_count,2);
 
                 foreach($field_data_array as $field_data) {
 
-                    // Old Logic
-                    //$p_persona_calculated_array = ffg_calculate_user_persona($field_data, $field->id, $persona_calculated_array);                    
-                    // $saved_meta_value = unserialize(bp_xprofile_get_meta( $field->id, 'field', 'ffg-persona-mapping-meta' ));
-                    // $persona_map_value = explode("/",$saved_meta_value[$field_data]);
-                
-                    // if (in_array('P', $persona_map_value)) {
-                    //     $p_persona_calculated_array['P'] = $p_persona_calculated_array['P'] + 1;
-                    // }
-                    // if (in_array('E', $persona_map_value)) {
-                    //     $p_persona_calculated_array['E'] = $p_persona_calculated_array['E'] + 1;
-                    // }
-                    // if (in_array('C', $persona_map_value)) {
-                    //     $p_persona_calculated_array['C'] = $p_persona_calculated_array['C'] + 1;
-                    // }
-
-                    // New Logic
                     $persona_map_value = explode("/",$saved_meta_value[$field_data]);
                     $per_option_weight = number_format($weight_per_option_meta_value / count($persona_map_value),2);
                     if (in_array('P', $persona_map_value)) {
@@ -76,20 +70,17 @@ function ffg_save_user_persona() {
                         $persona_calculated_value['C'] = $persona_calculated_value['C'] + $per_option_weight;
                     }
                }
-                // $persona_calculated_value = ffg_calculate_user_persona_value($p_persona_calculated_array, $persona_calculated_value); 
-                // $p_persona_calculated_array['P'] = 0;
-                // $p_persona_calculated_array['E'] = 0;
-                // $p_persona_calculated_array['C'] = 0;
             }
         }
-        bp_update_user_meta( $user_id, 'ffg-user-persona-value', serialize($persona_calculated_value) );
-        bp_update_user_meta( $user_id, 'ffg-user-persona-partner-value', $persona_calculated_value['P'] );
-        bp_update_user_meta( $user_id, 'ffg-user-persona-entrepreneur-value', $persona_calculated_value['E'] );
-        bp_update_user_meta( $user_id, 'ffg-user-persona-citizen-value', $persona_calculated_value['C'] );
-        bp_update_user_meta( $user_id, 'ffg-user-persona', ffg_get_user_persona($persona_calculated_value) );
-		ffg_set_persona_fields($user_id, $persona_calculated_value);
+        if ($persona_calculated_value['P'] > 0 || $persona_calculated_value['E'] > 0 || $persona_calculated_value['C'] > 0) {
+            bp_update_user_meta( $user_id, 'ffg-user-persona-value', serialize($persona_calculated_value) );
+            bp_update_user_meta( $user_id, 'ffg-user-persona-partner-value', $persona_calculated_value['P'] );
+            bp_update_user_meta( $user_id, 'ffg-user-persona-entrepreneur-value', $persona_calculated_value['E'] );
+            bp_update_user_meta( $user_id, 'ffg-user-persona-citizen-value', $persona_calculated_value['C'] );
+            bp_update_user_meta( $user_id, 'ffg-user-persona', ffg_get_user_persona($persona_calculated_value) );
+            ffg_set_persona_fields($user_id, $persona_calculated_value);
+        }
     }
-
 }
 
 function ffg_calculate_user_persona_value(array $p_persona_calculated_array, array &$persona_calculated_value) {
@@ -153,13 +144,24 @@ function ffg_calculate_user_persona($p_field_data, $p_field_id, &$p_persona_calc
 function ffg_admin_page_menu() {
 
     add_menu_page(
-        'FFG Custom Settings',
-        'FFG Custom Settings',
+        'FFG Persona Settings',
+        'FFG Persona Settings',
         'manage_options',
         'ffg-setting',
         'ffg_setting_page_content',
         'dashicons-schedule'
     );
+
+    add_submenu_page(
+        'ffg-setting',
+        'FFG Persona Settings',
+        'Re-Sync Persona',
+        'manage_options',
+        'resync-persona',
+        'ffg_recalculate_persona_setting_page'
+    );
+
+
 }
 
 function ffg_get_persona_fields() {
@@ -169,6 +171,13 @@ function ffg_get_persona_fields() {
     and g.name = 'Persona'
     and parent_id = 0;");
 }
+
+function ffg_get_all_user_meta() {
+    global $wpdb;
+    return $wpdb->get_results("SELECT * FROM `wp_usermeta`
+    where meta_key='ffg-user-persona';");
+}
+
 
 function ffg_get_field_options($field_id) {
     global $wpdb;
@@ -210,7 +219,7 @@ function ffg_setting_page_content() {
     $results = ffg_get_persona_fields();    
     ?>
     <h1>
-        <?php esc_html_e('Welcome to FFG Custom Settings page.' , 'ffg-settings-page'); ?>
+        <?php esc_html_e('FFG Persona Settings page.' , 'ffg-settings-page'); ?>
     </h1>
     <?php 
         if (!empty($_POST)) {
@@ -236,7 +245,6 @@ function ffg_setting_page_content() {
         <br/>
         <h3>Persona Mapping fields</h3>
     <?php
-
 
         if (!empty($results)) {
             echo "<table>";
@@ -266,7 +274,64 @@ function ffg_setting_page_content() {
     </table>
     </form>
     <?php
+     
+}
+
+
+
+function ffg_recalculate_persona_setting_page() {
+?>
+    <script type='text/javascript'>
+        jQuery(document).ready(function($) {
+            $('#processing').hide();
+        });
+        function recalculate() {
+            jQuery('#processing').show();
+            jQuery('#recalculateBtn').hide();
+            var data = {
+                'action': 'my_action',
+                'action_needed': 'resync'
+            };
+
+            jQuery.post(ajaxurl, data, function(response) {
+                alert(response);
+                jQuery('#processing').hide();
+                jQuery('#recalculateBtn').show();
+            });
+        }
+    </script>
+    <h1>
+        <?php esc_html_e('FFG Persona Settings page.' , 'ffg-settings-page'); ?>
+    </h1>
+    <p class='para-desc'>After any change in the Persona Mapping setting. Admin can Re-calculate the persona of all the users by clicking below button</p>
+
+    <button class='recalculateBtn' id='recalculateBtn' onclick='recalculate();'>Re calculate Persona for All User </button>
+    <span id='processing'><b>Processing ...</b></span>
+<?php
+}
+
+function my_action() {
+	global $wpdb; // this is how you get access to the database
+
+	$recalculate =  $_POST['action_needed'] ;
+    if ($recalculate == 'resync') {
+        $user_meta = ffg_get_all_user_meta();
+        if (!empty($user_meta)) {
+            foreach($user_meta as $row) {
+                ffg_update_user_persona($row->user_id);
+            }
+            echo 'Persona re-synced successfully';
+        }
+        else {
+            echo 'No user persona calcuated';
+        }
+    }
+    else {
+        echo 'Invalid request';
+    }    
+
     
-        
+
+	wp_die(); // this is required to terminate immediately and return a proper response
 }
 

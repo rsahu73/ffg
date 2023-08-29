@@ -7,3 +7,20 @@ input[type="text"]
 {
     width:100px;
 }
+
+#recalculateBtn {
+    background-color: #2271b1;
+    color: white;
+    height: 30px;
+    font-size: medium;
+}
+
+#processing {
+    font-size: medium;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+}
+
+.para-desc{
+    font-size: medium;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+}
