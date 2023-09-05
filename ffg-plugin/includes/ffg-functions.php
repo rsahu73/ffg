@@ -5,7 +5,22 @@ add_action('xprofile_updated_profile', 'ffg_save_user_persona');
 add_filter('bp_get_the_profile_field_required_label', 'ffg_change_required_label', 10, 2);
 add_filter('bp_after_has_profile_parse_args', 'hide_persona_fields');
 add_action( 'wp_ajax_my_action', 'my_action' );
+add_filter( 'gettext', 'ps_change_save_button_text', 20, 3 );
 
+function ps_change_save_button_text( $translated_text, $text, $domain ) {
+
+   if ( ! bp_is_user_profile_edit() || ! bp_is_my_profile() ) {
+		return $translated_text;
+	}
+
+    switch ( $translated_text ) {
+        case 'Save Changes' :
+        	$translated_text = __( 'Save and Continue', $domain );
+        break;
+    }
+    
+    return $translated_text;
+}
 
 function ffg_change_required_label() {
     return "*";
@@ -16,6 +31,16 @@ function ffg_save_user_persona() {
     echo "Start Processing " ." User Id : ". $user ."\n";
     ffg_update_user_persona($user);
     echo "End Processing " ." User Id : ". $user ."\n";
+    if ( ! bp_is_user_profile_edit() || ! bp_is_my_profile() ) {
+		return;
+	}
+	
+	$group_id = bp_get_current_profile_group_id()+1;
+	if ( bp_get_current_profile_group_id()==4 ) {
+			bp_core_redirect(bp_displayed_user_domain()."profile/");
+	}else{
+		bp_core_redirect(bp_displayed_user_domain()."profile/edit/group/$group_id/");
+	}
 }
 
 function ffg_update_user_persona($user_id) {
