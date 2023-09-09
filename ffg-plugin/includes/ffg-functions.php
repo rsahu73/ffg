@@ -6,6 +6,14 @@ add_filter('bp_get_the_profile_field_required_label', 'ffg_change_required_label
 add_filter('bp_after_has_profile_parse_args', 'hide_persona_fields');
 add_action( 'wp_ajax_my_action', 'my_action' );
 add_filter( 'gettext', 'ps_change_save_button_text', 20, 3 );
+global $wpdb;
+global $xprofile_fields_table;
+global $xprofile_groups_table;
+global $usermeta_table;
+$xprofile_fields_table = $wpdb->prefix . 'bp_xprofile_fields';
+$xprofile_groups_table = $wpdb->prefix . 'bp_xprofile_groups';
+$usermeta_table = $wpdb->prefix . 'usermeta';
+
 
 function ps_change_save_button_text( $translated_text, $text, $domain ) {
 
@@ -191,7 +199,9 @@ function ffg_admin_page_menu() {
 
 function ffg_get_persona_fields() {
     global $wpdb;
-    return $wpdb->get_results( "SELECT f.* FROM `wp_bp_xprofile_fields` f , `wp_bp_xprofile_groups` g
+    global $xprofile_fields_table;
+    global $xprofile_groups_table;
+    return $wpdb->get_results( "SELECT f.* FROM `$xprofile_fields_table` f , `$xprofile_groups_table` g
     where f.group_id = g.id
     and g.name = 'Persona'
     and parent_id = 0;");
@@ -199,14 +209,16 @@ function ffg_get_persona_fields() {
 
 function ffg_get_all_user_meta() {
     global $wpdb;
-    return $wpdb->get_results("SELECT * FROM `wp_usermeta`
+    global $usermeta_table;
+    return $wpdb->get_results("SELECT * FROM `$usermeta_table`
     where meta_key='ffg-user-persona';");
 }
 
 
 function ffg_get_field_options($field_id) {
     global $wpdb;
-    return $wpdb->get_results("SELECT * FROM `wp_bp_xprofile_fields`
+    global $xprofile_fields_table;
+    return $wpdb->get_results("SELECT * FROM `$xprofile_fields_table`
     where type='option'
     and parent_id = ".$field_id.";");
 }
@@ -240,6 +252,7 @@ function ffg_set_persona_fields($user_id, array $persona_calculated_value) {
 
 function ffg_setting_page_content() {
     global $wpdb;
+    global $xprofile_fields_table;
     
     $results = ffg_get_persona_fields();    
     ?>
@@ -276,7 +289,7 @@ function ffg_setting_page_content() {
             foreach($results as $row) {
                 $saved_weight_value = bp_xprofile_get_meta( $row->id, 'field', 'ffg-persona-weight-per-option' );
                 echo "<tr><td colspan=2><h4>".$row->name."&nbsp;&nbsp;<input type='text' size=12 placeholder='Point per Option' name='weight-".$row->id."' value='".$saved_weight_value."'></h4></td></tr>";
-                $options = $wpdb->get_results("SELECT * FROM `wp_bp_xprofile_fields`
+                $options = $wpdb->get_results("SELECT * FROM `$xprofile_fields_table`
                 where type='option'
                 and parent_id = ".$row->id.";");
                 $saved_meta_array = array();
@@ -311,18 +324,20 @@ function ffg_recalculate_persona_setting_page() {
             $('#processing').hide();
         });
         function recalculate() {
-            jQuery('#processing').show();
-            jQuery('#recalculateBtn').hide();
-            var data = {
-                'action': 'my_action',
-                'action_needed': 'resync'
-            };
+            if (confirm('Do you want to re calculate the Persona for all the users ?') == true) {
+                jQuery('#processing').show();
+                jQuery('#recalculateBtn').hide();
+                var data = {
+                    'action': 'my_action',
+                    'action_needed': 'resync'
+                };
 
-            jQuery.post(ajaxurl, data, function(response) {
-                alert(response);
-                jQuery('#processing').hide();
-                jQuery('#recalculateBtn').show();
-            });
+                jQuery.post(ajaxurl, data, function(response) {
+                    alert(response);
+                    jQuery('#processing').hide();
+                    jQuery('#recalculateBtn').show();
+                });
+            }
         }
     </script>
     <h1>

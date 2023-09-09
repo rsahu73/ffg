@@ -21,8 +21,6 @@ class FFG_Persona_Assignment_Admin {
         $this->path = plugin_dir_path( __FILE__ );
 		$this->url  = plugin_dir_url( __FILE__ );
 
-
-       // add_action( 'xprofile_field_additional_options', array( $this, 'render' ), 1000);
         add_action( 'xprofile_field_after_save', array( $this, 'save_persona_mapping' ) );
         
 
