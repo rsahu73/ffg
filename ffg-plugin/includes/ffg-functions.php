@@ -345,7 +345,7 @@ function ffg_recalculate_persona_setting_page() {
     </h1>
     <p class='para-desc'>Admin can Re-calculate the persona of all the users by clicking below button</p>
     <p><b>Note : </b>Resync the Persona only for change in existing Question weightage or change in the Persona Mapping of existing options<br />
-    Resync after adding a new question might give incorrect representation of Persona value, as the user have not answered the new question.
+    Resync only if weightage or Persona mappig is changed for the exsiting field. Resync after adding a new question, might, give incorrect representation of Persona value, as the user have not answered the new question.
     </p>
     <button class='recalculateBtn' id='recalculateBtn' onclick='recalculate();'>Re calculate Persona for All User </button>
     <span id='processing'><b>Processing ...</b></span>
